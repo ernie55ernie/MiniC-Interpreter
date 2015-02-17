@@ -1,1 +1,1 @@
-# MiniC-Interpreter
+# MiniCppInterpreter

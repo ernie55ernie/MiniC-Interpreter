@@ -45,7 +45,7 @@ class InterExc{
 	error_msg err;
 public:
 	InterExc(error_msg e ){err = e;}
-	error_msg get_err()(return err;)
+	error_msg get_err(){return err;}
 };
 
 // Interpreter prototypes.
@@ -85,7 +85,7 @@ void atom(int &value);
 void sntx_err(error_msg error);
 void putback();
 bool isdelim(char c);
-token_irep look_up(char *s);
+token_ireps look_up(char *s);
 int find_val(char *s);
 tok_types get_token();
 int internal_func(char *s);
