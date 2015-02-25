@@ -90,5 +90,42 @@ void eval_exp0(int &value){
 	eval_exp1(value);
 }
 
+// Process ralational operators.
+void eval_exp1(int &value){
+	int partial_value;
+	char op;
+	char relops[] = {
+		LT, LE, GT, GE, EQ, NE, 0
+	};
+
+	exal_exp2(value);
+	op = *token;
+	if(strchr(relops, op)){
+		get_token();
+		eval_exp2(partial_value);
+
+		switch(op){	// perform the relational operation
+		case LT:
+			value = value < partial_value;
+			break;
+		case LE:
+			value = value <= partial_value;
+			break;
+		case GT:
+			value = value > partial_value;
+			break;
+		case GE:
+			value = value >= partial_value;
+			break;
+		case EQ:
+			value = value == partial_value;
+			break
+		case NE:
+			value = value != partial_value;
+			break;
+		}
+	}
+}
+
 
 
