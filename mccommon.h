@@ -41,10 +41,10 @@ extern int ret_value;	// function return value
 extern bool breakfound;	// true if break encountered
 
 // Exception class for Mini C++.
-class InterExc{
+class InterpExc{
 	error_msg err;
 public:
-	InterExc(error_msg e ){err = e;}
+	InterpExc(error_msg e){err = e;}
 	error_msg get_err(){return err;}
 };
 
