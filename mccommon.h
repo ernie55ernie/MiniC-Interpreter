@@ -66,7 +66,7 @@ void exec_cout();
 void exec_cin();
 void assign_var(char *var_name, int value);
 bool load_program(char *p, char *fname);
-int find_val(char *s);
+int find_var(char *s);
 void interp();
 void func_ret();
 char* find_func(char *name);

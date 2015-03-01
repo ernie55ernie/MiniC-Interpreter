@@ -98,7 +98,7 @@ void eval_exp1(int &value){
 		LT, LE, GT, GE, EQ, NE, 0
 	};
 
-	exal_exp2(value);
+	eval_exp2(value);
 	op = *token;
 	if(strchr(relops, op)){
 		get_token();
@@ -119,7 +119,7 @@ void eval_exp1(int &value){
 			break;
 		case EQ:
 			value = value == partial_value;
-			break
+			break;
 		case NE:
 			value = value != partial_value;
 			break;
@@ -127,5 +127,110 @@ void eval_exp1(int &value){
 	}
 }
 
+// Add or substract two terms.
+void eval_exp2(int &value){
+	char op;
+	int partial_value;
+	char okops[] = {
+		'(', INC, DEC, '-', '+', 0
+	};
 
+	eval_exp3(value);
+
+	while((op = *token) == '+' || op == '-'){
+		get_token();
+
+		if(token_type == DELIMITER && 
+			!strchr(okops, *token))
+			throw InterpExc(SYNTAX);
+
+		eval_exp3(partial_value);
+
+		switch(op){	// add or substract
+		case '-':
+			value = value - partial_value;
+			break;
+		case '+':
+			value = value + partial_value;
+			break;
+		}
+	}
+}
+
+// Multiply or divide two factors.
+void eval_exp3(int &value){
+	char op;
+	int partial_value, t;
+	char okops[] = {
+		'(', INC, DEC, '-', '+', 0
+	};
+
+	eval_exp4(value);
+
+	while((op = *token) == '*' || op == '/'
+		|| op == '%'){
+		get_token();
+
+		if(token_type == DELIMITER &&
+			!strchr(okops, *token))
+			throw InterpExc(SYNTAX);
+
+		eval_exp4(partial_value);
+
+		switch(op){	// mul, div, or modulus
+		case '*':
+			value = value * partial_value;
+			break;
+		case '/':
+			if(partial_value == 0)
+				throw InterpExc(DIV_BY_ZERO);
+			value = (value) / partial_value;
+			break;
+		case '%':
+			t = (value) / partial_value;
+			value = value - (t * partial_value);
+			break;
+		}
+	}
+}
+
+// Is a unary +, -, ++, or --.
+void eval_exp4(int & value){
+	char op;
+	char temp;
+
+	op = '\0';
+	if(*token == '+' || *token == '-' ||
+		*token == INC || *token == DEC){
+			temp = *token;
+			op = *token;
+			get_token();
+			if(temp == INC)
+				assign_var(token, find_var(token) + 1);
+			if(temp == DEC)
+				assign_var(token, find_var(token) - 1);
+	}
+
+	eval_exp5(value);
+	if(op == '-') value = -(value);
+}
+
+// Process parenthesized expression,
+void eval_exp5(int &value){
+	if(*token == '('){
+		get_token();
+
+		eval_exp0(value);	// get subexpression
+
+		if(*token != ')')
+			throw InterpExc(PAREN_EXPECTED);
+		get_token();
+	}
+	else
+		atom(value);
+}
+
+// Find value of number, variable, or function.
+void atom(int &value){
+}
 
