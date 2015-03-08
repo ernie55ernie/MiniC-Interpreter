@@ -549,6 +549,50 @@ tok_types get_token(){
 
 // Return a token to input stream.
 void putback(){
-	
+	char *t;
+
+	t = token;
+	for(; *t; t++) prog--;
+}
+
+// Look up a token's internal representation in the
+// token table.
+token_ireps look_up(char *s){
+	int i;
+	char *p;
+
+	// Convert to lowercase.
+	p = s;
+	while(*p){
+		*p = tolower(*p);
+		p++;
+	}
+
+	// See if token is in table.
+	for(i = 0; *com_table[i].command; i++){
+		if(!strcmp(com_table[i].command, s))
+			return com_table[i].tok;
+	}
+
+	return UNDEFTOK;	// unknown command
+}
+
+// Return index of internal library function or -1 if
+// not found.
+int internal_func(char *s){
+	int i;
+
+	for(i = 0; intern_func[i].f_name[0], i++){
+		if(!strcmp(intern_func[i].f_name, s)) return i;
+	}
+
+	return -1;
+}
+
+// Return true if c is a delimiter.
+bool isdelim(char c){
+	if(strchr(" !:;,+-<>'/*%^=()", c) || c == 9 ||
+		c == '\r' || c == 0)return true;
+	return false;
 }
 
