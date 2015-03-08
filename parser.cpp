@@ -582,7 +582,7 @@ token_ireps look_up(char *s){
 int internal_func(char *s){
 	int i;
 
-	for(i = 0; intern_func[i].f_name[0], i++){
+	for(i = 0; intern_func[i].f_name[0]; i++){
 		if(!strcmp(intern_func[i].f_name, s)) return i;
 	}
 
@@ -595,4 +595,3 @@ bool isdelim(char c){
 		c == '\r' || c == 0)return true;
 	return false;
 }
-
