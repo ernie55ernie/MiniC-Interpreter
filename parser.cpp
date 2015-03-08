@@ -232,5 +232,323 @@ void eval_exp5(int &value){
 
 // Find value of number, variable, or function.
 void atom(int &value){
+	int i;
+	char temp[MAX_ID_LEN + 1];
+
+	switch(token_type){
+	case IDENTIFIER:
+		i = internal_func(token);
+		if(i != -1){
+			// Call "standard library" function.
+			value = (*intern_func[i].p)();
+		}
+		else if(find_func(token)){
+			// Call programmer-created function.
+			call();
+			value = ret_value;
+		}
+		else{
+			value = find_var(token);	// get var's value
+			strcpy_s(temp, token);	// save variable name
+
+			// Check for ++ or --.
+			get_token();
+			if(*token == INC || *token ==DEC){
+				if(*token == INC)
+					assign_var(temp, find_var(temp) + 1);
+				else
+					assign_var(temp, find_var(temp) - 1);
+			}else putback();
+		}
+
+		get_token();
+		return;
+	case NUMBER:	// is a numeric constant
+		value = atoi(token);
+		get_token();
+
+		return;
+	case DELIMITER:	// see if character constant
+		if(*token == '\''){
+			value = *prog;
+			prog++;
+			if(*prog != '\'')
+				throw InterpExc(QUOTE_EXPECTED);
+
+			prog++;
+			get_token();
+
+			return;
+		}
+		if(*token == ')') return;	// process empty expression
+		else throw InterpExc(SYNTAX);	// otherwise, syntax error
+	}
+}
+
+// Display an error message.
+void sntx_err(error_msg error){
+	char *p, *temp;
+	int linecount = 0;
+
+	static char *e[] = {
+		"Syntax error",
+		"No expression present",
+		"Not a variable",
+		"Duplicate variable name",
+		"Duplicate function name",
+		"Semicolon expected",
+		"Unbalanced braces",
+		"Function undefined",
+		"Type specifier expected",
+		"Return without call",
+		"Parentheses expected",
+		"While expected",
+		"Closing quote expected",
+		"Division by zero",
+		"{ expected (control statements must use blocks)",
+		"Colon expected"
+	};
+
+	// Display error and line number.
+	cout << "\n" << e[error];
+	p = p_buf;
+	while(p != prog){	// find the line number of error
+		p++;
+		if(*p == '\r'){
+			linecount++;
+		}
+	}
+
+	cout << " in line " << linecount << endl;
+
+	temp = p;
+	while(p > p_buf && *p != '\n') p--;
+
+	// Display offending line.
+	while(p <= temp)
+		cout << *p++;
+
+	cout << endl;
+}
+
+// Get a token.
+tok_types get_token(){
+	char *temp;
+
+	token_type = UNDEFTT;
+	tok = UNDEFTOK;
+
+	temp = token;
+	*temp = '\0';
+
+	// Skip over white space.
+	while(isspace(*prog) && *prog) ++prog;
+
+	// Skip over newline.
+	while(*prog == '\r'){
+		++prog;
+		++prog;
+		// Again, skip over while space.
+		while(isspace(*prog) && *prog) ++prog;
+	}
+
+	// Check for end of program.
+	if(*prog == '\0'){
+		*token = '\0';
+		tok = END;
+		return (token_type = DELIMITER);
+	}
+
+	// Check for block delimiters.
+	if(strchr("{", *prog)){
+		*temp = *prog;
+		temp++;
+		*temp = '\0';
+		prog++;
+		return (token_type = BLOCK);
+	}
+
+	// Look for comments.
+	if(*prog == '/')
+		if(*(prog + 1) == '*'){	// is a /* comment
+			prog += 2;
+			do{	// find end of comment
+				while(*prog != '*') prog++;
+				prog++;
+			}while(*prog != '/');
+			prog++;
+			return (token_type = DELIMITER);
+		}else if(*(prog + 1) == '/'){	// is a // comment
+			prog += 2;
+			// Find end of comment.
+			while(*prog != '\r' && *prog != '\0')prog++;
+			if(*prog == '\r') prog += 2;
+			return (token_type = DELIMITER);
+		}
+
+		// Check for double-ops.
+		if(strchr("!<>=+-", *prog)){
+			switch(*prog){
+			case '=':
+				if(*(prog + 1) == '='){
+					prog++;
+					prog++;
+					*temp = EQ;
+					temp++;
+					*temp = EQ;
+					temp++;
+					*temp = '\0';
+				}
+				break;
+			case '!':
+				if(*(prog + 1) == '='){
+					prog++;
+					prog++;
+					*temp = NE;
+					temp++;
+					*temp = NE;
+					temp++;
+					*temp = '\0';
+				}
+				break;
+			case '<':
+				if(*(prog + 1) == '='){
+					prog++;
+					prog++;
+					*temp = LE;
+					temp++;
+					*temp = LE;
+				}else if(*(prog + 1) == '<'){
+					prog++;
+					prog++;
+					*temp = LS;
+					temp++;
+					*temp = LS;
+				}else{
+					prog++;
+					*temp = LT;
+				}
+				temp++;
+				*temp = '\0';
+				break;
+			case '>':
+				if(*(prog + 1) == '='){
+					prog++;
+					prog++;
+					*temp = GE;
+					temp++;
+					*temp = GE;
+				}else if(*(prog + 1) == '>'){
+					prog++;
+					prog++;
+					*temp = RS;
+					temp++;
+					*temp = RS;
+				}else{
+					prog++;
+					*temp = GT;
+				}
+				temp++;
+				*temp = '\0';
+				break;
+			case '+':
+				if(*(prog + 1) == '+'){
+					prog++;
+					prog++;
+					*temp = INC;
+					temp++;
+					*temp = INC;
+					temp++;
+					*temp = '\0';
+				}
+				break;
+			case '-':
+				if(*(prog + 1) == '-'){
+					prog++;
+					prog++;
+					*temp = DEC;
+					temp++;
+					*temp = DEC;
+					temp++;
+					*temp = '\0';
+				}
+				break;
+			}
+
+			if(*token) return (token_type = DELIMITER);
+		}
+
+		// Check for other delimiters.
+		if(strchr("+-*^/%=;:(),'", *prog)){
+			*temp = *prog;
+			prog++;
+			temp++;
+			*temp = '\0';
+			return (token_type = DELIMITER);
+		}
+
+		// Read a quoted string.
+		if(*prog == '"'){
+			prog++;
+			while(*prog != '"' && *prog != '\r' && *prog){
+				// Check for \n escape sequence.
+				if(*prog == '\\'){
+					if(*(prog + 1) == '\n'){
+						prog++;
+						*temp++ = '\n';
+					}
+				}else if((temp - token) < MAX_T_LEN)
+					*temp++ = *prog;
+
+				prog++;
+			}
+
+			if(*prog == '\r' || *prog == '\0')
+				throw InterpExc(SYNTAX);
+			prog++;
+			*temp = '\0';
+			return (token_type = STRING);
+		}
+
+		// Read an integer number.
+		if(isdigit(*prog)){
+			while(!isdelim(*prog)){
+				if((temp - token) < MAX_ID_LEN)
+					*temp++ = *prog;
+				prog++;
+			}
+			*temp = '\0';
+			return (token_type = NUMBER);
+		}
+
+		// Read identifier or keyword.
+		if(isalpha(*prog)){
+			while(!isdelim(*prog)){
+				if((temp - token) < MAX_ID_LEN)
+					*temp++ =  *prog;
+				prog++;
+			}
+			token_type = TEMP;
+		}
+
+		*temp = '\0';
+
+		// Determine if token is a keyword or identifier.
+		if(token_type == TEMP){
+			tok = look_up(token);	// convert to internal form
+			if(tok) token_type = KEYWORD;	// is a keyword
+			else token_type = IDENTIFIER;
+		}
+
+		// Check for unidentified character in file.e
+		if(token_type == UNDEFTT)
+			throw InterpExc(SYNTAX);
+
+		return token_type;
+}
+
+// Return a token to input stream.
+void putback(){
+	
 }
 
