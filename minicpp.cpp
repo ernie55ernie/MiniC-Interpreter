@@ -106,6 +106,8 @@ int main(int argc, char *argv[]){
 		return 1;
 	}
 
+	system("pause");
+
 	return ret_value;
 }
 
@@ -797,3 +799,88 @@ void exec_cout(){
 	if(*token != ';')throw InterpExc(SEMI_EXPECTED);
 }
 
+// Execute a cin statement.
+void exec_cin(){
+	int val;
+	char chval;
+	token_ireps vtype;
+
+	get_token();
+	if(*token != RS) throw InterpExc(SYNTAX);
+
+	do{
+		get_token();
+		if(token_type != IDENTIFIER)
+			throw InterpExc(NOT_VAR);
+
+		vtype = find_var_type(token);
+
+		if(vtype == CHAR){
+			cin >> chval;
+			assign_var(token, chval);
+		}else if(vtype == INT){
+			cin >> val;
+			assign_var(token, val);
+		}
+
+		get_token();
+	}while(*token == RS);
+
+	if(*token != ';')throw InterpExc(SEMI_EXPECTED);
+}
+
+// Find the end of a block.
+void find_eob(){
+	int brace;
+
+	get_token();
+	if(*token != '{')
+		throw InterpExc(BRACE_EXPECTED);
+
+	brace = 1;
+
+	do{
+		get_token();
+		if(*token == '{')brace++;
+		else if(*token == '}')brace--;
+	}while(brace && tok != END);
+
+	if(tok == END)throw InterpExc(UNBAL_BRACES);
+}
+
+// Determine if an identifier is a variable. Return
+// true of vairable is found; false otherwise.
+bool is_var(char *vname){
+	// See if vname is a local variale.
+	if(!local_var_stack.empty())
+		for(int i = local_var_stack.size() - 1;
+			i >= func_call_stack.top(); i--){
+			if(!strcmp(local_var_stack[i].var_name, vname))
+				return true;
+		}
+
+	// See if vname is a global variable.
+	for(unsigned i = 0; i < global_vars.size(); i++)
+		if(!strcmp(global_vars[i].var_name, vname))
+			return true;
+
+	return false;
+}
+
+// Return the type of variable.
+token_ireps find_var_type(char *vname){
+	// First, see if it's a local variable.
+	if(!local_var_stack.empty())
+		for(int i = local_var_stack.size() - 1;
+			i >= func_call_stack.top(); i--){
+			if(!strcmp(local_var_stack[i].var_name, vname))
+				return local_var_stack[i].v_type;
+		}
+
+	// Otherwise, try global vars.
+	for(unsigned i = 0; i < global_vars.size(); i++)
+		if(!strcmp(global_vars[i].var_name, vname))
+			return local_var_stack[i].v_type;
+
+	return UNDEFTOK;
+}
