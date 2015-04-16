@@ -502,8 +502,8 @@ int find_var(char *vname){
 
 	// Otherwise, try global vars.
 	for(unsigned i = 0; i < global_vars.size(); i++)
-		if(!strcmp(global_vars[i], vname))
-			return gloabal_vars[i].value;
+		if(!strcmp(global_vars[i].var_name, vname))
+			return global_vars[i].value;
 
 	throw InterpExc(NOT_VAR);	// variable not found
 }
@@ -570,7 +570,7 @@ void exec_switch(){
 		// If no matching case found, then skip.
 		if(!brace) break;
 
-		if(tok == END)throw InterpExc(STNTAX);
+		if(tok == END)throw InterpExc(SYNTAX);
 
 		// Get value of the case statement.
 		eval_exp(cval);
@@ -607,5 +607,98 @@ void exec_switch(){
 
 // Execute a while loop.
 void exec_while(){
+	int cond;
+	char *temp;
+
+	putback();	// put back the while
+	temp = prog;	// save location of top of while loop
+
+	get_token();
+	eval_exp(cond);	// check the conditional expression
+
+	// Confirm start of block.
+	if(*token != '{')
+		throw InterpExc(BRACE_EXPECTED);
+
+	if(cond)
+		interp();	// if true, interpret
+	else{	// otherwise, skip to end of loop
+		find_eob();
+		return;
+	}
+
+	prog = temp; // loop back to top
+
+	// Check for break in loop.
+	if(breakfound){
+		// Find start of loop block.
+		do{
+			get_token();
+		}while(*token != '{' && tok != END);
+
+		putback();
+		breakfound = false;
+		find_eob();	// now, find end of loop
+		return;
+	}
+}
+
+// Execute a do loop.
+void exec_do(){
+	int cond;
+	char *temp;
+
+	// Save location of top of do loop.
+	putback();	// put back do
+	temp = prog;
+
+	get_token();	// get start of loop block.
+
+	// Confirm start of block.
+	get_token();
+	if(*token != '{')
+		throw InterpExc(BRACE_EXPECTED);
+	putback();
+
+	interp();	// interpret loop
+
+	// Check for break in loop.
+	if(breakfound){
+		prog = temp;
+		// Find start of loop block.
+		do{
+			get_token();
+		}while(*token != '{' && tok != END);
+
+		// Find end of while block.
+		do{
+			get_token();
+		}while(*token != '{' && tok != END);
+
+		// Find end of wilhe block.
+		putback();
+		find_eob();
+
+		// Now, find end of while expression.
+		do{
+			get_token();
+		}while(*token != ';' && tok != END);
+		if(tok ==END)throw InterpExc(SYNTAX);
+
+		breakfound = false;
+		return;
+	}
+
+	get_token();
+	if(tok != WHILE) throw InterpExc(WHILE_EXPECTED);
+
+	eval_exp(cond);	// check the loop condition
+
+	// If true loop; otherwise, continue on.
+	if(cond)prog = temp;
+}
+
+// Execute a for loop.
+void exec_for(){
 	
 }
