@@ -289,5 +289,207 @@ void interp(){
 
 // Return the entry point of the specified function.
 // Return NULL if not found.
-//char *find_func(char *name){
-//}
+char *find_func(char *name){
+	unsigned i;
+
+	for(i = 0; i < func_table.size(); i++)
+		if(!strcmp(name, func_table[i].func_name))
+			return func_table[i].loc;
+	return NULL;
+}
+
+// Declare a global variable.
+void decl_global(){
+	token_ireps vartype;
+	var_type vt;
+
+	get_token();	// get type
+
+	vartype = tok;	// save var type
+
+	// Process comma-separated list.
+	do{
+		vt.v_type = vartype;
+		vt.value = 0;	// init to 0
+		get_token();	// get name
+
+		// See if variable is a duplicate.
+		for(unsigned i = 0; i < global_vars.size(); i++)
+			if(!strcmp(global_vars[i].var_name, token))
+				throw InterpExc(DUP_VAR);
+
+		strcpy_s(vt.var_name, token);
+		global_vars.push_back(vt);
+
+		get_token();
+	}while(*token == ',');
+
+	if(*token != ';')throw InterpExc(SEMI_EXPECTED);
+}
+
+// Declare a local variable.
+void decl_local(){
+	var_type vt;
+
+	get_token();	// get var type
+	vt.v_type = tok;	// sotre type
+
+	vt.value = 0;	// init var to 0
+
+	// Process comma-separated list.
+	do{
+		get_token();	// get var name
+
+		// See if variable is already the name
+		// of a local variable in this scope.
+		if(!local_var_stack.empty())
+			for(int i = local_var_stack.size() - 1;
+				i >= nest_scope_stack.top(); i--){
+				if(!strcmp(local_var_stack[i].var_name, token))
+					throw InterpExc(DUP_VAR);
+			}
+
+		strcpy_s(vt.var_name, token);
+		local_var_stack.push_back(vt);
+		get_token();
+	}while(*token == ',');
+
+	if(*token != ';')throw InterpExc(SEMI_EXPECTED);
+}
+
+// Call a function.
+void call(){
+	char *loc, *temp;
+	int lvartemp;
+
+	// First, find entry point of function.
+	loc = find_func(token);
+
+	if(loc == NULL)
+		throw InterpExc(FUNC_UNDEF);	// function not defined
+	else{
+		// Save local var stack index.
+		lvartemp = local_var_stack.size();
+
+		get_args();	// get function arguments
+		temp = prog;	// save return location
+
+		func_call_stack.push(lvartemp);	// push local var index
+
+		prog = loc;	// reset prog to start of function
+		get_params();	// load the function's parameters with
+						// the values of the arguments
+
+		interp();	// interpret the function
+
+		prog = temp;	// reset the program pointer
+
+		if(func_call_stack.empty()) throw InterpExc(RET_NOCALL);
+
+		// Reset local_var_stack to its previous state.
+		local_var_stack.resize(func_call_stack.top());
+		func_call_stack.pop();
+
+	}
+}
+
+// Push the arguements to a function onto the local
+// variable stack.
+void get_args(){
+	int value, count, temp[NUM_PARAMS];
+	var_type vt;
+
+	count = 0;
+	get_token();
+	if(*token != '(')throw InterpExc(PAREN_EXPECTED);
+
+	// Process a comma-separated lsit of values.
+	do{
+		eval_exp(value);
+		temp[count] = value; // save temporarily
+		get_token();
+		count++;
+	}while(*token == ',');
+
+	count--;
+
+	// Now, push on local_var_stack in reverse order.
+	for(;count >= 0; count--){
+		vt.value = temp[count];
+		vt.v_type = ARG;
+		local_var_stack.push_back(vt);
+	}
+}
+
+// Get function parameters.
+void get_params(){
+	var_type *p;
+	int i;
+
+	i = local_var_stack.size() - 1;
+
+	// Process comma-separated list of parameters.
+	do{
+		get_token();
+		p = &local_var_stack[i];
+		if(*token != ')'){
+			if(tok != INT && tok != CHAR)
+				throw InterpExc(TYPE_EXPECTED);
+
+			p->v_type = tok;
+			get_token();
+
+			// Link parameter name with argument already on
+			// local var stack.
+			strcpy_s(p->var_name, token);
+			get_token();
+			i--;
+		}else break;
+	}while(*token == ',');
+
+	if(*token != ')') throw InterpExc(PAREN_EXPECTED);
+}
+
+// Return from a function.
+void func_ret(){
+	int value;
+
+	value = 0;
+
+	// Get return value, if any.
+	eval_exp(value);
+
+	ret_value = value;
+}
+
+// Assign a value to a variable.
+void assign_var(char *vname, int value){
+	// First, see if it's a local variable.
+	if(!local_var_stack.empty())
+		for(int i = local_var_stack.size() - 1;
+			i >= func_call_stack.top(); i--){
+				if(!strcmp(local_var_stack[i].var_name, vname)){
+					if(local_var_stack[i].v_type == CHAR)
+						local_var_stack[i].value = (char)value;
+					else if(local_var_stack[i].v_type == INT)
+						local_var_stack[i].value = value;
+					return;
+				}
+		}
+
+		// Otherwise, try global vars.
+		for(unsigned i = 0; i < global_vars.size(); i++)
+			if(!strcmp(global_vars[i].var_name, vname)){
+				if(global_vars[i].v_type == CHAR)
+					global_vars[i].value = (char)value;
+				else if(global_vars[i].v_type == INT)
+					global_vars[i].value = value;
+				return;
+			}
+
+		throw InterpExc(NOT_VAR);	// variable not found
+}
+
+// Find the value of a variable.
+int find_var(char *vname){
+}
