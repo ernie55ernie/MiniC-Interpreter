@@ -545,4 +545,67 @@ void exec_if(){
 
 // Execute a switch statement.
 void exec_switch(){
+	int sval, cval;
+	int brace;
+
+	eval_exp(sval);	// Get switch expression
+
+	// Check for start of block.
+	if(*token != '{')
+		throw InterpExc(BRACE_EXPECTED);
+
+	// Record new scope.
+	nest_scope_stack.push(local_var_stack.size());
+
+	// Now, check case statememts.
+	for(;;){
+		brace = 1;
+		// Find a case statement.
+		do{
+			get_token();
+			if(*token == '{')brace++;
+			else if(*token == '}')brace--;
+		}while(tok != CHAR && tok != END && brace);
+
+		// If no matching case found, then skip.
+		if(!brace) break;
+
+		if(tok == END)throw InterpExc(STNTAX);
+
+		// Get value of the case statement.
+		eval_exp(cval);
+
+		// Read and discard the :
+		get_token();
+
+		if(*token != ':')
+			throw InterpExc(COLON_EXPECTED);
+
+		// If value match, then interpret.
+		if(cval == sval){
+			brace = 1;
+			do{
+				interp();
+
+				if(*token == '{')brace++;
+				else if(*token == '}')brace--;
+			}while(!breakfound && tok != END && brace);
+
+			// Find end of switch statment.
+			while(brace){
+				get_token();
+				if(*token == '{')brace++;
+				else if(*token == '}')brace--;
+			}
+
+			breakfound = false;
+
+			break;
+		}
+	}
+}
+
+// Execute a while loop.
+void exec_while(){
+	
 }
