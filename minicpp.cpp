@@ -492,4 +492,57 @@ void assign_var(char *vname, int value){
 
 // Find the value of a variable.
 int find_var(char *vname){
+	// First, see if it's a local variable.
+	if(!local_var_stack.empty())
+		for(int i = local_var_stack.size() - 1;
+			i >= func_call_stack.top(); i--){
+			if(!strcmp(local_var_stack[i].var_name, vname))
+				return local_var_stack[i].value;
+		}
+
+	// Otherwise, try global vars.
+	for(unsigned i = 0; i < global_vars.size(); i++)
+		if(!strcmp(global_vars[i], vname))
+			return gloabal_vars[i].value;
+
+	throw InterpExc(NOT_VAR);	// variable not found
+}
+
+// Execute an if statement.
+void exec_if(){
+	int cond;
+
+	eval_exp(cond);	// get if expression.
+
+	if(cond){	// if true, process target of IF
+		// Confirm start of block.
+		if(*token != '{')
+			throw InterpExc(BRACE_EXPECTED);
+
+		interp();
+	}else{
+		// Otherwise skip around IF block and
+		// process the ELSE, if present.
+
+		find_eob();	// find start of next line
+		get_token();
+
+		if(tok != ELSE){
+			// Restore token if no ELSE is present,
+			putback();
+			return;
+		}
+
+		// Confirm start of block.
+		get_token();
+		if(*token != '{')
+			throw InterpExc(BRACE_EXPECTED);
+		putback();
+
+		interp();
+	}
+}
+
+// Execute a switch statement.
+void exec_switch(){
 }
