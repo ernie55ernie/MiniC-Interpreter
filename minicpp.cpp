@@ -685,7 +685,7 @@ void exec_do(){
 		do{
 			get_token();
 		}while(*token != ';' && tok != END);
-		if(tok ==END)throw InterpExc(SYNTAX);
+		if(tok == END)throw InterpExc(SYNTAX);
 
 		breakfound = false;
 		return;

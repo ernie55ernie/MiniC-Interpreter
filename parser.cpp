@@ -360,7 +360,7 @@ tok_types get_token(){
 	}
 
 	// Check for block delimiters.
-	if(strchr("{", *prog)){
+	if(strchr("{}", *prog)){
 		*temp = *prog;
 		temp++;
 		*temp = '\0';
