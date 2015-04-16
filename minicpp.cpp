@@ -693,12 +693,107 @@ void exec_do(){
 	if(tok != WHILE) throw InterpExc(WHILE_EXPECTED);
 
 	eval_exp(cond);	// check the loop condition
-
+	
 	// If true loop; otherwise, continue on.
 	if(cond)prog = temp;
 }
 
 // Execute a for loop.
 void exec_for(){
-	
+	int cond;
+	char *temp, *temp2;
+	int paren;
+
+	get_token();	// skip opening (
+	eval_exp(cond);	// initialization expression
+
+	if(*token != ';')throw InterpExc(SEMI_EXPECTED);
+	prog++;	// get past the ;
+	temp = prog;
+
+	for(;;){
+		// Get the value of the conditional expression.
+		eval_exp(cond);
+
+		if(*token != ';')throw InterpExc(SEMI_EXPECTED);
+		prog++;	// get past the ;
+		temp2 = prog;
+
+		// Find start of for block.
+		paren = 1;
+		while(paren){
+			get_token();
+			if(*token == '(')paren++;
+			if(*token == ')')paren--;
+		}
+
+		// Confirm start of block.
+		get_token();
+		if(*token != '{')
+			throw InterpExc(BRACE_EXPECTED);
+		putback();
+
+		// If condition is true, interpret
+		if(cond)
+			interp();
+		else{	// otherwise, skip to end of loop
+			find_eob();
+			return;
+		}
+
+		prog = temp2;	// go to increment expression
+
+		// Check for break in loop.
+		if(breakfound){
+			// Find start of loop block.
+			do{
+				get_token();
+			}while(*token != '{' && tok != END);
+
+			putback();
+			breakfound = false;
+			find_eob();	// now, find end of loop
+			return;
+		}
+
+		// Evaluate the increment expression.
+		eval_exp(cond);
+
+		prog = temp;	// loop backto top
+	}
 }
+
+// Execute a cout statement.
+void exec_cout(){
+	int val;
+
+	get_token();
+	if(*token != LS)throw InterpExc(SYNTAX);
+
+	do{
+		get_token();
+
+		if(token_type == STRING){
+			// Output a string.
+			cout << token;
+		}
+		else if(token_type == NUMBER ||
+			token_type == IDENTIFIER){
+			// Output a number.
+			putback();
+			eval_exp(val);
+			cout << val;
+		}
+		else if(*token == '\''){
+			// Output a character constant.
+			putback();
+			eval_exp(val);
+			cout << (char)val;
+		}
+
+		get_token();
+	}while(*token == LS);
+
+	if(*token != ';')throw InterpExc(SEMI_EXPECTED);
+}
+
